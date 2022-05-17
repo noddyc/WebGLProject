@@ -1,0 +1,188 @@
+<html>
+<head>
+    <title>CSCI-510: Assn 5 - Transformation</title>
+    
+    <!-- include vertex shaders -->
+
+    <script id="wireframe-V" type="x-shader/x-vertex">
+    #version 300 es
+    precision mediump float;
+    in vec3 aVertexPosition;
+    in vec3 aNormal;
+    in vec2 aUV;
+
+    // Model transforms
+    uniform mat4 modelT;
+    
+    // view transform
+    uniform mat4 viewT;
+    
+    // projection tramsform
+    uniform mat4 projT;
+
+    // Light parameters
+    uniform vec3 ambientLight;
+    uniform vec3 lightPosition;   // in world coords
+    uniform vec3 lightColor;
+
+    // object color parameters
+    uniform vec3 baseColor;
+    uniform vec3 specHighlightColor;
+
+    // Phong parameters
+    uniform float ka;
+    uniform float kd;
+    uniform float ks;
+    uniform float ke;
+    
+    out vec2 theUV;
+    out vec3 theColor;
+
+    void main()
+    {
+        // All calculations will be done in camera space
+        mat4 modelView = viewT * modelT;
+        mat4 normalmatrix = transpose(inverse (modelView));
+        
+        vec3 vcam = (modelView * vec4(aVertexPosition, 1.0)).xyz;
+        vec3 lcam = (viewT * vec4(lightPosition, 1.0)).xyz;
+        vec3 ncam = (normalmatrix * vec4(aNormal, 1.0)).xyz;
+        ncam = faceforward (ncam, vcam, ncam);
+        
+        
+        vec3 N = normalize (ncam);
+        vec3 L = normalize (lcam - vcam);
+        vec3 R = normalize (reflect (-L, N));
+        vec3 V = -normalize (vcam);
+        
+        // individual components
+        vec3 ambient = ka * ambientLight * baseColor;
+        vec3 diffuse = kd * lightColor * baseColor * max (dot(L, N), 0.0);
+        vec3 spec = ks * specHighlightColor * lightColor * pow (max(dot(R, V), 0.0), ke);
+        
+        // final color
+        theColor = ambient + diffuse + spec;
+
+        theUV = aUV;
+        gl_Position = projT * viewT * modelT * vec4 (aVertexPosition,1.0);
+    }
+    </script>
+
+     <!-- wireframe fragment Shaders -->
+     <script id="wireframe-F" type="x-shader/x-fragment">
+    #version 300 es
+    precision mediump float;
+    
+
+    in vec3 theColor;
+    in vec2 theUV;
+
+    uniform sampler2D theTexture;
+    uniform float rValue;
+    uniform float gValue;
+    uniform float bValue;
+
+    uniform int decision;
+
+    
+
+    float squares(vec2 theUV, float scale) {
+        float s = theUV[0];
+        float t = theUV[1];
+      
+        float sum = floor(s * scale) + floor(t * scale);
+        bool isOdd = mod(sum,4.0)!=0.0;
+        float percent = (isOdd) ? 1.0 : 0.0;
+      
+        return percent;
+      }
+
+    vec4 overlay(vec2 theUV) {
+        vec3 green = vec3(0, 1.0, 0);
+        
+        float percent = squares(theUV, 36.0);
+        
+        return vec4(green * percent, 1.0);
+    }
+      
+
+    // Color that is the result of this shader
+    out vec4 fragColor;
+
+
+    
+    void main(void) {
+        if(decision == 1){
+            fragColor = vec4 (rValue, gValue, bValue, 1.0);
+        }else if(decision == 2){
+            fragColor = texture (theTexture, theUV);
+        }else{
+            fragColor = vec4 (theColor.xyz, 1.0);
+        }
+    }
+
+     </script>
+     
+     <!-- Matrix library and code for standard transformations -->
+     <script type="text/javascript" src="gl-matrix-min.js"></script>
+    
+    <!-- include the main final functions -->
+    <script type="text/javascript" src="./finalMain.js"></script>
+    
+    <!-- shape functions -->
+    <script type="text/javascript" src="./cgIShape.js"></script>
+    <script type="text/javascript" src="./myShapes-min.js"></script>
+    
+    <!-- keyboard functions -->
+    <script type="text/javascript" src="./event.js">
+    function gotKey (event) {
+      
+      var key = event.key;
+      
+      // change texture
+      if (key == '1'){
+          pressed = 1;
+      }
+    }
+    </script>
+    
+    
+    <!-- texture images -->
+    <img id="world-texture" src="wood.jpg" style="display: none;"> </img>
+    <img id="metal" src="metal.jpg" style="display: none;"> </img>
+
+  <script type="text/javascript">
+    // Call init once the webpage has loaded
+    window.onload = init;
+  </script>
+</head>
+
+<body>
+  <h1>CSCI-510: Final Exam Image</h1>
+  <table>
+      <tr>
+          <td><canvas id="webgl-canvas" width="500" height="500">
+            Your browser does not support the HTML5 canvas element.
+          </canvas></td>
+          
+          <td>
+              <h3>Controls</h3>
+              
+              <table border="1">
+              <tbody>
+              <tr>
+              <td> </td>
+              <td>Press "1" to see the image</td>
+              </tr>
+              </tbody>
+              </table>
+              
+          </td>
+      </tr>
+  </table>
+  
+  
+
+</body>
+</html>
+
